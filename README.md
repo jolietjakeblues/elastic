@@ -204,3 +204,7 @@ https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/Rijksmonumenten-sdo/serv
 ```
 
 De scripts wijzigen geen data. Ze voeren alleen zoekopdrachten uit op de Elasticsearch-index.
+
+## Dit is een demo
+Deze scripts zijn bedoeld om te experimenteren met zoeken in de Rijksmonumentendata via Elasticsearch.
+Bouw hier geen applicaties of andere afhankelijkheden op. De scripts, index en service kunnen zonder aankondiging wijzigen of verdwijnen.
