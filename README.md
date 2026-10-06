@@ -1,10 +1,20 @@
-## Zoeken in Rijksmonumenten via Elasticsearch
+# Rijksmonumenten zoeken via Elasticsearch
 
-In deze map staat een eenvoudig Python-script waarmee je via de Elasticsearch-service van de RCE kunt zoeken in de Rijksmonumentendata.
+In deze map staan drie Python-scripts waarmee je via de Elasticsearch-service van de RCE kunt zoeken in de Rijksmonumentendata.
 
-Voor nu zoekt het script alleen in `schema:description`.
+De drie scripts lopen op in mogelijkheden:
 
-### Voorbeelden
+- `simple.py` voor snel zoeken in de omschrijving
+- `uitgebreid.py` voor zoeken in meerdere velden, filters en CSV-export
+- `rijksmonumentenzoeker.py` voor dezelfde functionaliteit via een grafische interface
+
+## 1. simple.py
+
+De eenvoudige versie.
+
+Deze zoekt alleen in `schema:description`.
+
+Voorbeelden:
 
 ```text
 kasteel AND gracht
@@ -19,18 +29,10 @@ kasteel AND NOT ruïne
 ```
 
 ```text
-"gesmeed ijzer"
+"Grote Scheer"
 ```
 
-Je kunt ook voorwaarden combineren:
-
-```text
-(kasteel OR buitenplaats) AND gracht
-```
-
-### Wat krijg je terug?
-
-Per resultaat toont het script onder andere:
+Je krijgt per resultaat onder andere:
 
 - Rijksmonumentnummer
 - naam
@@ -38,41 +40,167 @@ Per resultaat toont het script onder andere:
 - adres
 - postcode
 - plaats
-- provincie/regio
+- regio
 - categorie
 - type
 - link naar het Monumentenregister
 - description
-- het tekstfragment waarin de zoekterm is gevonden
+- het tekstfragment waarop de zoekopdracht matcht
 
-Bovenaan zie je ook hoeveel resultaten Elasticsearch in totaal heeft gevonden en hoeveel daarvan zijn opgehaald.
+Het script toont ook:
 
-### Gebruik
+- het totale aantal gevonden resultaten
+- het aantal daadwerkelijk opgehaalde resultaten
 
-Installeer eerst `requests` als dat nog niet aanwezig is:
-
-```bash
-pip install requests
-```
-
-Start daarna het script:
+Starten:
 
 ```bash
-python zoeken.py
+python simple.py
 ```
 
-Vul vervolgens je zoekvraag in, bijvoorbeeld:
+---
+
+## 2. uitgebreid.py
+
+De uitgebreide commandline-versie.
+
+Naast zoeken in de omschrijving kun je kiezen uit:
+
+- omschrijving
+- naam
+- adres
+- plaats
+- type
+- alle beschikbare zoekvelden tegelijk
+
+Je kunt daarnaast filteren op:
+
+- plaats
+- provincie/regio
+- categorie
+- type
+
+Een zoekopdracht kan bijvoorbeeld zijn:
+
+```text
+(kasteel OR buitenplaats) AND gracht
+```
+
+met daarnaast als filter:
+
+```text
+Provincie/regio: Gelderland
+```
+
+Zoeken en filteren blijven daarmee gescheiden.
+
+Het script gebruikt `track_total_hits`, zodat Elasticsearch het exacte totale aantal resultaten teruggeeft.
+
+Na het zoeken kun je de opgehaalde resultaten exporteren naar CSV.
+
+Starten:
+
+```bash
+python uitgebreid.py
+```
+
+---
+
+## 3. rijksmonumentenzoeker.py
+
+De grafische versie.
+
+Deze gebruikt dezelfde Elasticsearch-service, maar je hoeft geen vragen meer in de terminal te beantwoorden.
+
+Je krijgt een venster waarin je kunt:
+
+- een zoekvraag invoeren
+- een zoekveld kiezen
+- filteren op plaats
+- filteren op provincie/regio
+- filteren op categorie
+- filteren op type
+- het maximum aantal op te halen resultaten instellen
+- resultaten in een tabel bekijken
+- de details van een monument bekijken
+- resultaten naar CSV exporteren
+
+Voorbeeld:
+
+```text
+Zoekvraag: kasteel AND gracht
+Zoekveld: Omschrijving
+Provincie/regio: Gelderland
+```
+
+Boven de resultaten zie je bijvoorbeeld:
+
+```text
+Totaal gevonden: 83 | Opgehaald: 83
+```
+
+Klik op een resultaat om onder andere de URI, locatiegegevens, description en het gematchte tekstfragment te bekijken.
+
+Starten:
+
+```bash
+python rijksmonumentenzoeker.py
+```
+
+## Zoeksyntax
+
+De scripts gebruiken een Elasticsearch `query_string` query.
+
+Daardoor kun je onder andere deze operatoren gebruiken:
+
+| Syntax | Betekenis |
+|---|---|
+| `AND` | beide voorwaarden moeten voorkomen |
+| `OR` | minimaal één voorwaarde moet voorkomen |
+| `NOT` | sluit een voorwaarde uit |
+| `"..."` | zoek een exacte woordcombinatie |
+| `( ... )` | combineer voorwaarden |
+
+Voorbeelden:
 
 ```text
 ijzer AND brug
 ```
 
-### Elasticsearch
+```text
+ijzer OR staal
+```
 
-Het script gebruikt de Elasticsearch-service van de dataset `Rijksmonumenten-sdo`:
+```text
+kasteel AND NOT ruïne
+```
+
+```text
+"gesmeed ijzer"
+```
+
+```text
+(kasteel OR buitenplaats) AND gracht
+```
+
+## Installatie
+
+De scripts gebruiken `requests`.
+
+Installeer dit eenmalig met:
+
+```bash
+pip install requests
+```
+
+`rijksmonumentenzoeker.py` gebruikt daarnaast `tkinter`. Dat zit bij een normale Windows-installatie van Python meestal al inbegrepen.
+
+## Elasticsearch-service
+
+De scripts zoeken in de Elasticsearch-service van de dataset `Rijksmonumenten-sdo`:
 
 ```text
 https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/Rijksmonumenten-sdo/services/Rijksmonumenten-sdo-elas/_search
 ```
 
-De zoekopdracht gebruikt een `query_string` query. Daardoor kun je gewone Booleaanse operatoren gebruiken zoals `AND`, `OR` en `NOT`.
+De scripts wijzigen geen data. Ze voeren alleen zoekopdrachten uit op de Elasticsearch-index.
