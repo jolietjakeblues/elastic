@@ -169,6 +169,19 @@ async function run() {
     renderFilters({}); renderMap([]);
   } finally { clearTimeout(timer); if (controller === current) $('workspace').setAttribute('aria-busy', 'false'); }
 }
+// Beginsituatie bewaren, zodat "Opnieuw beginnen" de pagina terugzet zonder te herladen.
+const initial = Object.fromEntries(['status', 'facets', 'results', 'query-json', 'map-info'].map(id => [id, [...$(id).childNodes].map(node => node.cloneNode(true))]));
+function reset() {
+  controller?.abort(); controller = undefined;
+  Object.assign(state, { query: '', field: 'Omschrijving', filters: {}, page: 0 });
+  $('query').value = ''; $('field').value = 'Omschrijving'; checkQuery();
+  for (const [id, nodes] of Object.entries(initial)) $(id).replaceChildren(...nodes.map(node => node.cloneNode(true)));
+  $('active-filters').replaceChildren(); $('page-info').textContent = ''; $('pagination').hidden = true; $('error').hidden = true;
+  $('workspace').setAttribute('aria-busy', 'false'); cards.clear();
+  if (map) { markerLayer.clearLayers(); markers.clear(); shapes.clear(); needsFit = false; map.setView([52.2, 5.3], 7); }
+  setView('list'); $('query').focus();
+}
+$('reset').addEventListener('click', reset);
 $('search-form').addEventListener('submit', event => { event.preventDefault(); state.query = $('query').value; state.field = $('field').value; state.page = 0; run(); });
 document.querySelectorAll('[data-example]').forEach(node => node.addEventListener('click', () => { $('help').close(); $('query').value = node.dataset.example; checkQuery(); $('search-form').requestSubmit(); }));
 $('help-open').addEventListener('click', () => $('help').showModal());
