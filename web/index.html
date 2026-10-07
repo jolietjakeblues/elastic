@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rijksmonumenten SDO/Elastic demo</title>
+  <meta name="description" content="Verken Rijksmonumenten via Linked Data en Elasticsearch. Zoek, combineer en filter met facetten.">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script>
+</head>
+<body>
+  <header><div class="wrap"><p class="eyebrow">RCE DATA / ZOEKDEMO</p><h1>Rijksmonumenten <span>SDO/Elastic demo</span></h1><p>Doorzoek de omschrijvingen en verken de resultaten met filters.</p></div></header>
+  <main class="wrap">
+    <form id="search-form" class="search-panel">
+      <div class="query-input"><label for="query">Jouw zoekvraag</label><input id="query" name="query" type="search" maxlength="500" placeholder="Bijvoorbeeld: kasteel AND gracht" aria-describedby="syntax"></div>
+      <div><label for="field">Zoek in</label><select id="field" name="field"><option>Omschrijving</option><option>Naam</option><option>Adres</option><option>Plaats</option><option>Type</option><option>Alles</option></select></div>
+      <button type="submit" class="primary">Zoek</button>
+      <p id="syntax" class="hint">Combineer met AND, OR, NOT en haakjes. Gebruik quotes voor een woordcombinatie. Een lege zoekvraag toont alles.</p>
+      <div class="examples"><span>Probeer:</span><button type="button" data-example="kasteel AND gracht">kasteel AND gracht</button><button type="button" data-example="ijzer OR staal">ijzer OR staal</button><button type="button" data-example='"Grote Scheer"'>"Grote Scheer"</button></div>
+    </form>
+    <div id="status" role="status" aria-live="polite">Vul een zoekvraag in of kies een voorbeeld.</div>
+    <div id="error" role="alert" hidden></div>
+    <div class="view-toggle" role="group" aria-label="Weergave"><button type="button" data-view="list" aria-pressed="true">Lijst</button><button type="button" data-view="map" aria-pressed="false">Kaart</button></div>
+    <div class="workspace" id="workspace" data-view="list">
+      <aside aria-label="Filters"><h2>Filters en facetten</h2><p class="hint">Aantallen gelden voor je zoekvraag en alle actieve filters.</p><div id="facets"><p class="muted">Na het zoeken verschijnen hier de beschikbare filters.</p></div></aside>
+      <section id="results-panel" aria-labelledby="results-heading"><div class="results-title"><h2 id="results-heading">Resultaten</h2><span id="page-info"></span></div><div id="active-filters"></div><div id="results"><p class="empty">Zoek op woorden, een naam of een adres om monumenten te ontdekken.</p></div><nav id="pagination" aria-label="Resultaatpagina’s" hidden><button id="previous" type="button">Vorige</button><span id="page-number"></span><button id="next" type="button">Volgende</button></nav></section>
+      <section id="map-panel" aria-labelledby="map-heading"><div class="results-title"><h2 id="map-heading">Kaart</h2></div><div id="map" role="region" aria-label="Kaart met zoekresultaten"></div><p id="map-info" class="hint">Na het zoeken verschijnen de resultaten van deze pagina met een locatie op de kaart.</p></section>
+    </div>
+    <details class="technical"><summary>Toon Elasticsearch-query</summary><p>De JSON van de laatst verstuurde zoekactie.</p><pre id="query-json">Er is nog geen zoekactie uitgevoerd.</pre></details>
+  </main>
+  <footer class="wrap"><strong>Dit is een demo.</strong> Bouw hier geen applicaties of andere afhankelijkheden op. De scripts, index en service kunnen zonder aankondiging wijzigen of verdwijnen.<p>Deze demo gebruikt de RCE-dataset Rijksmonumenten-sdo en is geen vervanging van het Monumentenregister.</p></footer>
+</body>
+</html>
