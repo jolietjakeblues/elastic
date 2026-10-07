@@ -1,8 +1,9 @@
-import { buildQuery, search, facets, fields, values, textValue, safeUrl, PAGE_SIZE, MAX_WINDOW } from './search.js';
+import { buildQuery, buildExportQuery, search, facets, fields, sorts, values, textValue, safeUrl, toParams, fromParams, describe, toCsv, PAGE_SIZE, MAX_WINDOW, EXPORT_MAX } from './search.js';
 import { geometryFor } from './geo.js';
 const $ = id => document.getElementById(id);
-const state = { query: '', field: 'Omschrijving', filters: {}, page: 0 };
-let controller, needsFit = false;
+const blank = () => ({ query: '', field: 'Omschrijving', filters: {}, page: 0, sort: 'relevantie' });
+const state = blank();
+let controller, needsFit = false, lastTotal = 0;
 const cards = new Map(), markers = new Map(), shapes = new Map();
 const wide = window.matchMedia('(min-width: 1100px)');
 // Leaflet komt van een CDN; zonder Leaflet werkt de demo verder zonder kaart.
@@ -60,7 +61,7 @@ function markerIcon(number, selected) {
   const label = el('span', number, selected ? 'selected' : null);
   return L.divIcon({ className: 'label-marker', html: label, iconSize: [0, 0] });
 }
-const shapeStyle = selected => ({ color: selected ? '#d18608' : '#075a85', weight: selected ? 3 : 2, fillOpacity: selected ? 0.35 : 0.2 });
+const shapeStyle = selected => ({ color: selected ? '#000000' : '#01689b', fillColor: selected ? '#ffb612' : '#01689b', weight: selected ? 3 : 2, fillOpacity: selected ? 0.5 : 0.2 });
 function renderMap(hits) {
   if (!map) return 0;
   markerLayer.clearLayers(); markers.clear(); shapes.clear();
@@ -111,39 +112,68 @@ function select(id, fromList) {
     cards.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
+const isActive = (key, value) => state.filters[key]?.includes(value) ?? false;
+function toggleFilter(key, value) {
+  const list = state.filters[key] ?? [];
+  state.filters[key] = list.includes(value) ? list.filter(item => item !== value) : [...list, value];
+  if (!state.filters[key].length) delete state.filters[key];
+  state.page = 0; run();
+}
 function renderFilters(aggregations) {
   $('active-filters').replaceChildren();
-  for (const [key, value] of Object.entries(state.filters)) {
-    const chip = button(`${facets[key]}: ${decode(value)} ×`, () => { delete state.filters[key]; state.page = 0; run(); });
-    chip.setAttribute('aria-label', `Verwijder filter ${facets[key]}: ${value}`); $('active-filters').append(chip);
+  for (const [key, list] of Object.entries(state.filters)) for (const value of list) {
+    const chip = button(`${facets[key]}: ${decode(value)} ×`, () => toggleFilter(key, value));
+    chip.setAttribute('aria-label', `Verwijder filter ${facets[key]}: ${decode(value)}`); $('active-filters').append(chip);
   }
   if (Object.keys(state.filters).length) $('active-filters').append(button('Wis alle filters', () => { state.filters = {}; state.page = 0; run(); }));
   $('facets').replaceChildren();
   for (const [key, label] of Object.entries(facets)) {
-    const group = el('details'); group.open = true; group.append(el('summary', label));
-    const aggregation = aggregations[key];
+    const group = el('details'); group.open = true;
+    const selected = state.filters[key]?.length;
+    group.append(el('summary', selected ? `${label} (${selected} gekozen)` : label));
+    const aggregation = aggregations[key]?.values;
     if (!aggregation) { group.append(el('p', 'Deze facet is niet beschikbaar.', 'hint')); $('facets').append(group); continue; }
+    // Gekozen waarden blijven zichtbaar, ook als ze niet bij de 100 meest voorkomende horen.
+    const buckets = [...aggregation.buckets];
+    for (const value of state.filters[key] ?? []) if (!buckets.some(bucket => bucket.key === value)) buckets.unshift({ key: value, doc_count: null });
     const list = el('ul', null, 'facet-list');
-    for (const bucket of aggregation.buckets) {
-      const item = el('li');
-      const option = button('', () => { if (state.filters[key] === bucket.key) delete state.filters[key]; else state.filters[key] = bucket.key; state.page = 0; run(); });
+    for (const bucket of buckets) {
+      const item = el('li'), option = el('label', null, 'facet-option'), box = el('input');
+      box.type = 'checkbox'; box.checked = isActive(key, bucket.key); box.addEventListener('change', () => toggleFilter(key, bucket.key));
       const approximate = bucket.doc_count_error_upper_bound > 0;
-      option.append(el('span', decode(bucket.key)), el('span', `${approximate ? '≈ ' : ''}${format(bucket.doc_count)}`));
-      option.setAttribute('aria-pressed', String(state.filters[key] === bucket.key)); item.append(option); list.append(item);
+      option.append(box, el('span', decode(bucket.key), 'facet-name'), el('span', bucket.doc_count == null ? '' : `${approximate ? '≈ ' : ''}${format(bucket.doc_count)}`, 'facet-count'));
+      item.append(option); list.append(item);
     }
     group.append(list);
-    if (!aggregation.buckets.length) group.append(el('p', 'Geen waarden bij deze zoekvraag.', 'hint'));
+    if (!buckets.length) group.append(el('p', 'Geen waarden bij deze zoekvraag.', 'hint'));
     if (aggregation.sum_other_doc_count > 0) group.append(el('p', 'De 100 meest voorkomende waarden. Verfijn je zoekvraag voor andere waarden.', 'hint'));
     $('facets').append(group);
   }
 }
-async function run() {
+// Zoekformulier, URL en uitleg volgen de state.
+function syncForm() {
+  $('query').value = state.query; $('field').value = state.field; $('sort').value = state.sort; checkQuery();
+}
+function syncUrl(mode) {
+  const query = toParams(state).toString();
+  const url = `${location.pathname}${query ? `?${query}` : ''}`;
+  if (mode === 'push' && url !== `${location.pathname}${location.search}`) history.pushState(null, '', url);
+  else if (mode === 'replace') history.replaceState(null, '', url);
+}
+function explain() {
+  const lines = describe(state);
+  $('explain').textContent = lines.slice(0, -1).join(' ');
+  $('explain').hidden = !$('explain').textContent;
+  $('query-explain').replaceChildren(...lines.map(line => el('li', line)));
+}
+async function run(urlMode = 'push') {
   controller?.abort(); const current = new AbortController(); controller = current;
   let body;
   try { body = buildQuery(state); } catch (error) { $('error').textContent = error.message; $('error').hidden = false; return; }
   $('query-json').textContent = JSON.stringify(body, null, 2);
+  syncUrl(urlMode); explain();
   $('error').hidden = true; $('status').textContent = 'Zoeken…'; $('workspace').setAttribute('aria-busy', 'true');
-  $('results').replaceChildren(); renderMap([]); $('map-info').textContent = 'Zoeken…'; $('facets').replaceChildren(); $('active-filters').replaceChildren(); $('pagination').hidden = true; $('page-info').textContent = '';
+  $('results').replaceChildren(); renderMap([]); $('map-info').textContent = 'Zoeken…'; $('facets').replaceChildren(); $('active-filters').replaceChildren(); $('pagination').hidden = true; $('page-info').textContent = ''; $('export').disabled = true; $('export-info').textContent = '';
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; current.abort(); }, 20000);
   try {
@@ -160,6 +190,7 @@ async function run() {
     $('previous').disabled = state.page === 0;
     $('next').disabled = (state.page + 1) * PAGE_SIZE >= Math.min(total, MAX_WINDOW);
     $('page-number').textContent = `Pagina ${state.page + 1} van ${Math.max(1, Math.ceil(Math.min(total, MAX_WINDOW) / PAGE_SIZE))}`;
+    lastTotal = total; $('export').disabled = total === 0;
     if (total > MAX_WINDOW) $('results').append(el('p', 'Je kunt maximaal de eerste 10.000 resultaten bekijken. Verfijn je zoekvraag voor de overige resultaten.', 'hint'));
   } catch (error) {
     if (controller !== current) return;
@@ -169,7 +200,21 @@ async function run() {
     renderFilters({}); renderMap([]);
   } finally { clearTimeout(timer); if (controller === current) $('workspace').setAttribute('aria-busy', 'false'); }
 }
+// Beginsituatie bewaren, zodat "Opnieuw beginnen" de pagina terugzet zonder te herladen.
+const initial = Object.fromEntries(['status', 'facets', 'results', 'query-json', 'query-explain', 'map-info'].map(id => [id, [...$(id).childNodes].map(node => node.cloneNode(true))]));
+function reset() {
+  controller?.abort(); controller = undefined;
+  Object.assign(state, blank()); syncForm(); syncUrl('push');
+  $('explain').hidden = true; $('export').disabled = true; $('export-info').textContent = '';
+  for (const [id, nodes] of Object.entries(initial)) $(id).replaceChildren(...nodes.map(node => node.cloneNode(true)));
+  $('active-filters').replaceChildren(); $('page-info').textContent = ''; $('pagination').hidden = true; $('error').hidden = true;
+  $('workspace').setAttribute('aria-busy', 'false'); cards.clear();
+  if (map) { markerLayer.clearLayers(); markers.clear(); shapes.clear(); needsFit = false; map.setView([52.2, 5.3], 7); }
+  setView('list'); $('query').focus();
+}
+$('reset').addEventListener('click', reset);
 $('search-form').addEventListener('submit', event => { event.preventDefault(); state.query = $('query').value; state.field = $('field').value; state.page = 0; run(); });
+$('sort').addEventListener('change', () => { state.sort = $('sort').value; state.page = 0; if ($('query-json').textContent.startsWith('{')) run(); });
 document.querySelectorAll('[data-example]').forEach(node => node.addEventListener('click', () => { $('help').close(); $('query').value = node.dataset.example; checkQuery(); $('search-form').requestSubmit(); }));
 $('help-open').addEventListener('click', () => $('help').showModal());
 $('help-close').addEventListener('click', () => $('help').close());
@@ -187,3 +232,32 @@ $('previous').addEventListener('click', () => { state.page--; run(); });
 $('next').addEventListener('click', () => { state.page++; run(); });
 document.querySelectorAll('.view-toggle button').forEach(node => node.addEventListener('click', () => setView(node.dataset.view)));
 wide.addEventListener('change', () => { if (map) { map.invalidateSize(); fitMarkers(); } });
+// Deelbare link: de URL bevat altijd de huidige zoekactie.
+$('share').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(location.href); $('share').textContent = 'Link gekopieerd'; }
+  catch { window.prompt('Kopieer deze link:', location.href); }
+  setTimeout(() => { $('share').textContent = 'Kopieer link'; }, 2500);
+});
+// CSV-export: dezelfde zoekactie, maximaal EXPORT_MAX rijen.
+$('export').addEventListener('click', async () => {
+  $('export').disabled = true; $('export-info').textContent = 'Export wordt gemaakt…';
+  try {
+    const data = await search(buildExportQuery(state), AbortSignal.timeout(30000));
+    const blob = new Blob([toCsv(data.hits.hits, decode)], { type: 'text/csv;charset=utf-8' });
+    const anchor = el('a'); anchor.href = URL.createObjectURL(blob); anchor.download = `rijksmonumenten-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click(); setTimeout(() => URL.revokeObjectURL(anchor.href), 1000);
+    $('export-info').textContent = lastTotal > EXPORT_MAX ? `De export bevat de eerste ${format(EXPORT_MAX)} van ${format(lastTotal)} resultaten.` : `${format(data.hits.hits.length)} resultaten geëxporteerd.`;
+  } catch (error) {
+    console.error(error); $('export-info').textContent = 'Exporteren is niet gelukt. Probeer het opnieuw.';
+  } finally { $('export').disabled = false; }
+});
+for (const [key, { label }] of Object.entries(sorts)) { const option = el('option', label); option.value = key; $('sort').append(option); }
+$('export').textContent = `Download CSV (max. ${format(EXPORT_MAX)})`;
+// Zoekactie uit de URL laden: bij openen van een gedeelde link en bij terug/vooruit in de browser.
+function loadFromUrl() {
+  const { state: next, active } = fromParams(location.search);
+  Object.assign(state, next); syncForm();
+  if (active || next.sort !== 'relevantie') run('replace'); else reset();
+}
+window.addEventListener('popstate', loadFromUrl);
+if (location.search) loadFromUrl();
