@@ -1,5 +1,16 @@
 # Rijksmonumenten SDO/Elastic demo
 
+> **Status (7 oktober 2026): uitgevoerd.** Dit is het oorspronkelijke werkplan. De webdemo is gebouwd in `web/` en draait als Cloudflare Worker die bij elke push naar `main` automatisch wordt bijgewerkt. Actuele documentatie staat in de [README](README.md).
+>
+> Afwijkingen van en aanvullingen op dit plan:
+>
+> - `geoPoint` en `geoShape` blijken in de index leeg; alle geometrie komt uit `geo:asWKT`, meestal als polygoon. Polygonen worden daarom wél getekend, met het Rijksmonumentnummer als label op het zwaartepunt.
+> - Facets zijn gebouwd en getest (`terms`-aggregations op `.keyword` werken); per facet kunnen meerdere waarden worden aangevinkt (OF binnen, EN tussen facets, via `post_filter`).
+> - Geen Worker als tussenlaag: de service staat CORS toe. De Worker serveert alleen de statische bestanden.
+> - Uit "Eventueel later" zijn gebouwd: sorteren (relevantie, naam, plaats), deelbare URL, knop `Toon Elasticsearch-query`, uitleg in gewone taal, polygonen en CSV-export. Sorteren op Rijksmonumentnummer kan niet (nummer is tekst, scripts zijn uitgeschakeld). Geografisch filteren op kaartgebied kan pas als `geoPoint`/`geoShape` gevuld zijn.
+> - Extra: zoekhulp-popup, tip bij `en`/`of`/`and` in kleine letters, knop "Opnieuw beginnen" en RCE-huisstijl.
+
+
 ## Doel
 
 Een kleine webdemo maken die laat zien wat er **meer kan met de SDO/Elasticsearch-publicatie van Rijksmonumenten** dan alleen een klassieke zoekinterface.

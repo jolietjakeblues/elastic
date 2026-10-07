@@ -6,6 +6,10 @@ Een kleine webdemo die laat zien wat Elasticsearch bovenop de SDO/Linked Data-pu
 
 De demo is **geen vervanging van het Monumentenregister** en geen productieapplicatie.
 
+**Online:** <https://rijksmonumenten-sdo-elastic-demo.jolietjakeblues64.workers.dev/>
+
+Voorbeeld van een deelbare zoekactie: [kasteel AND gracht in Gelderland of Utrecht, op naam gesorteerd](https://rijksmonumenten-sdo-elastic-demo.jolietjakeblues64.workers.dev/?q=kasteel+AND+gracht&provincie=Gelderland&provincie=Utrecht&sorteer=naam)
+
 ```text
 Linked Data + SDO-publicatie + Elasticsearch = zoeken, filteren, facetteren en geografisch verkennen
 ```
@@ -229,15 +233,16 @@ Er is geen database, account, Worker of andere infrastructuur die opgeruimd moet
 
 De Python-scripts hieronder zijn gebruikt om de Elasticsearch-service en de zoekmogelijkheden te verkennen. Ze zijn geen onderdeel van de webdemo.
 
-In deze map staan drie Python-scripts waarmee je via de Elasticsearch-service van de RCE kunt zoeken in de Rijksmonumentendata.
+In deze map staan vier Python-scripts waarmee je via de Elasticsearch-service van de RCE kunt zoeken in de Rijksmonumentendata.
 
-De drie scripts lopen op in mogelijkheden:
+De scripts lopen op in mogelijkheden:
 
-- `simple.py` voor snel zoeken in de omschrijving
-- `uitgebreid.py` voor zoeken in meerdere velden, filters en CSV-export
-- `rijksmonumentenzoeker.py` voor dezelfde functionaliteit via een grafische interface
+- `elastic_triply_description.py` voor snel zoeken in de omschrijving
+- `elastic_triply_uitgebreid.py` voor zoeken in meerdere velden, filters en CSV-export
+- `rijksmonumenten_zoeker.py` voor dezelfde functionaliteit via een grafische interface
+- `rijksmonumenten_zoeker_met_kaart.py` als grafische versie met kaart
 
-## 1. simple.py
+## 1. elastic_triply_description.py
 
 De eenvoudige versie.
 
@@ -284,12 +289,12 @@ Het script toont ook:
 Starten:
 
 ```bash
-python simple.py
+python elastic_triply_description.py
 ```
 
 ---
 
-## 2. uitgebreid.py
+## 2. elastic_triply_uitgebreid.py
 
 De uitgebreide commandline-versie.
 
@@ -330,12 +335,12 @@ Na het zoeken kun je de opgehaalde resultaten exporteren naar CSV.
 Starten:
 
 ```bash
-python uitgebreid.py
+python elastic_triply_uitgebreid.py
 ```
 
 ---
 
-## 3. rijksmonumentenzoeker.py
+## 3. rijksmonumenten_zoeker.py
 
 De grafische versie.
 
@@ -373,7 +378,21 @@ Klik op een resultaat om onder andere de URI, locatiegegevens, description en he
 Starten:
 
 ```bash
-python rijksmonumentenzoeker.py
+python rijksmonumenten_zoeker.py
+```
+
+## 4. rijksmonumenten_zoeker_met_kaart.py
+
+Dezelfde grafische versie als `rijksmonumenten_zoeker.py`, met daarnaast een kaartweergave van de gevonden monumenten via `tkintermapview`.
+
+Installatie en starten:
+
+```bash
+pip install requests tkintermapview
+```
+
+```bash
+python rijksmonumenten_zoeker_met_kaart.py
 ```
 
 ## Zoeksyntax
@@ -422,7 +441,7 @@ Installeer dit eenmalig met:
 pip install requests
 ```
 
-`rijksmonumentenzoeker.py` gebruikt daarnaast `tkinter`. Dat zit bij een normale Windows-installatie van Python meestal al inbegrepen.
+`rijksmonumenten_zoeker.py` gebruikt daarnaast `tkinter`. Dat zit bij een normale Windows-installatie van Python meestal al inbegrepen.
 
 ## Elasticsearch-service
 
