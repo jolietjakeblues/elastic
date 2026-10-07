@@ -1,8 +1,8 @@
 import { buildQuery, buildExportQuery, search, facets, fields, sorts, values, textValue, safeUrl, toParams, fromParams, describe, toCsv, PAGE_SIZE, MAX_WINDOW, EXPORT_MAX } from './search.js';
 import { geometryFor } from './geo.js';
 const $ = id => document.getElementById(id);
-const blank = () => ({ query: '', field: 'Omschrijving', filters: {}, page: 0, sort: 'relevantie' });
-const state = blank();
+const blank = () => ({ query: '', field: 'Omschrijving', filters: {}, page: 0, sort: 'relevantie', jokers: state?.jokers ?? false });
+let state; state = blank();
 let controller, needsFit = false, lastTotal = 0;
 const cards = new Map(), markers = new Map(), shapes = new Map();
 const wide = window.matchMedia('(min-width: 1100px)');

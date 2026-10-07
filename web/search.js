@@ -21,7 +21,7 @@ export const sorts = {
 function filterClauses(filters, skip) {
   return Object.entries(filters).filter(([key, list]) => key !== skip && list.length).map(([key, list]) => ({ terms: { [`${fields[key]}.keyword`]: list } }));
 }
-function validate({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie' }) {
+function validate({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie', jokers = false }) {
   if (!Object.hasOwn(searchFields, field)) throw new Error('Onbekend zoekveld.');
   if (!Object.hasOwn(sorts, sort)) throw new Error('Onbekende sortering.');
   if (!Number.isInteger(page) || page < 0 || (page + 1) * PAGE_SIZE > MAX_WINDOW) throw new Error('Verfijn je zoekvraag om meer resultaten te bekijken.');
@@ -32,7 +32,7 @@ function validate({ query = '', field = 'Omschrijving', filters = {}, page = 0, 
     if (!Object.hasOwn(facets, key) || list.length > MAX_VALUES || !list.every(item => typeof item === 'string' && item.length <= 300)) throw new Error('Ongeldig filter.');
     if (list.length) clean[key] = [...new Set(list)];
   }
-  const search = query.trim() ? { query_string: { query: query.trim(), fields: searchFields[field], allow_leading_wildcard: false } } : { match_all: {} };
+  const search = query.trim() ? { query_string: { query: query.trim(), fields: searchFields[field], allow_leading_wildcard: jokers === true } } : { match_all: {} };
   return { search, filters: clean, field, page, sort };
 }
 // Zoeken (query) en filteren (post_filter) blijven gescheiden. Elke facet telt met de filters van de andere
@@ -69,13 +69,14 @@ export function safeUrl(value) {
 }
 // Deelbare URL: ?q=…&veld=…&provincie=…&provincie=…&sorteer=…&pagina=…
 const params = { addressRegion: 'provincie', addressLocality: 'plaats', category: 'categorie', additionalType: 'type' };
-export function toParams({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie' }) {
+export function toParams({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie', jokers = false }) {
   const result = new URLSearchParams();
   if (query.trim()) result.set('q', query.trim());
   if (field !== 'Omschrijving') result.set('veld', field);
   for (const [key, list] of Object.entries(filters)) for (const value of list) result.append(params[key], value);
   if (sort !== 'relevantie') result.set('sorteer', sort);
   if (page > 0) result.set('pagina', String(page + 1));
+  if (jokers) result.set('jokers', '1');
   return result;
 }
 export function fromParams(search) {
@@ -88,13 +89,15 @@ export function fromParams(search) {
     field: Object.hasOwn(searchFields, input.get('veld')) ? input.get('veld') : 'Omschrijving',
     filters,
     sort: Object.hasOwn(sorts, input.get('sorteer')) ? input.get('sorteer') : 'relevantie',
+    // Verborgen testschakelaar: ?jokers=1 staat een jokerteken aan het begin toe (bijv. *molen). Niet in de interface.
+    jokers: input.get('jokers') === '1',
     page: Number.isInteger(page) && page >= 1 && page * PAGE_SIZE <= MAX_WINDOW ? page - 1 : 0
   };
   return { state, active: [...input.keys()].some(key => ['q', ...Object.values(params)].includes(key)) };
 }
 // Uitleg van de zoekactie in gewone taal.
 const fieldText = { Omschrijving: 'in de omschrijving', Naam: 'in de naam', Adres: 'in het adres', Plaats: 'in de plaatsnaam', Type: 'in het type', Alles: 'in alle tekstvelden' };
-export function describe({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie' }) {
+export function describe({ query = '', field = 'Omschrijving', filters = {}, page = 0, sort = 'relevantie', jokers = false }) {
   const lines = [];
   const trimmed = query.trim();
   if (!trimmed) lines.push('Toont alle monumenten (geen zoekvraag).');
@@ -106,6 +109,7 @@ export function describe({ query = '', field = 'Omschrijving', filters = {}, pag
   }
   const active = Object.entries(filters).filter(([, list]) => list.length);
   if (active.length) lines.push(`Alleen monumenten met ${active.map(([key, list]) => `${facets[key].toLowerCase()} ${list.map(value => `“${value}”`).join(' of ')}`).join(', en ')}.`);
+  if (jokers) lines.push('Testmodus: een jokerteken aan het begin (bijv. *molen) is toegestaan.');
   lines.push(`Gesorteerd op ${sort === 'relevantie' ? 'relevantie (best passend eerst)' : sorts[sort].label.charAt(0).toLowerCase() + sorts[sort].label.slice(1)}; resultaten ${page * PAGE_SIZE + 1} tot ${(page + 1) * PAGE_SIZE}.`);
   return lines;
 }
