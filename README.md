@@ -44,10 +44,14 @@ npm run test:live
 
 ## Deployment
 
-De map `web/` is een statische site (HTML, CSS, JavaScript). Elke statische hosting werkt, bijvoorbeeld Cloudflare Pages:
+De demo draait als Cloudflare Worker die alleen de statische bestanden uit `web/` serveert (Workers static assets, zonder Worker-script). De configuratie staat in `wrangler.jsonc`.
+
+Automatisch: de GitHub-repository is gekoppeld via Workers Builds. Elke push naar `main` wordt automatisch gepubliceerd; pushes naar andere branches en pull requests krijgen een eigen preview-URL.
+
+Handmatig (alleen nodig zonder koppeling):
 
 ```bash
-npx wrangler pages deploy web --project-name rijksmonumenten-sdo-elastic-demo
+npx wrangler deploy
 ```
 
 ## Architectuur
@@ -80,6 +84,12 @@ De demo gebruikt een Elasticsearch `query_string` query, zodat Booleaanse operat
 | `NOT` | sluit uit | `kasteel AND NOT ruïne` |
 | `"..."` | exacte woordcombinatie | `"gesmeed ijzer"` |
 | `( ... )` | groeperen | `(kasteel OR buitenplaats) AND gracht` |
+| `+` / `-` | moet / mag niet | `+kasteel -ruïne` |
+| `"..."~5` | woorden binnen 5 posities | `"kasteel gracht"~5` |
+| `*` / `?` | jokertekens (niet aan het begin) | `molen*`, `kast?el` |
+| `~` | vergelijkbare spelling | `kasteeel~` |
+
+Let op: operatoren alleen in hoofdletters (`and`, `en` en `of` zijn gewone zoekwoorden); zonder operator betekent een spatie `OR`; accenten tellen mee (`ruïne` ≠ `ruine`). De knop **Zoekhulp** in de demo legt dit uit met klikbare voorbeelden, en onder de zoekbalk verschijnt een tip als iemand `en`/`of`/`and` in kleine letters typt.
 
 Een lege zoekvraag toont alle monumenten (`match_all`). Zo kun je ook alleen met facets verkennen.
 
@@ -171,8 +181,8 @@ Niet gebouwd, want niet nodig: CORS werkt en de begrenzing zit in de frontend. E
 
 ## Demo verwijderen
 
-1. Verwijder de uitgerolde site, bijvoorbeeld met `npx wrangler pages project delete rijksmonumenten-sdo-elastic-demo`.
-2. Verwijder uit deze repository `web/`, `tests/`, `server.mjs`, `package.json` en `.claude/launch.json`, en dit webdemo-gedeelte van de README.
+1. Verwijder de Worker in het Cloudflare-dashboard (Workers & Pages → `rijksmonumenten-sdo-elastic-demo` → Settings → Delete) of met `npx wrangler delete`. Daarmee verdwijnt ook de Git-koppeling.
+2. Verwijder uit deze repository `web/`, `tests/`, `server.mjs`, `package.json`, `wrangler.jsonc` en `.claude/launch.json`, en dit webdemo-gedeelte van de README.
 
 Er is geen database, account, Worker of andere infrastructuur die opgeruimd moet worden.
 
