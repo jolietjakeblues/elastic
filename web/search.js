@@ -106,7 +106,7 @@ export function describe({ query = '', field = 'Omschrijving', filters = {}, pag
   }
   const active = Object.entries(filters).filter(([, list]) => list.length);
   if (active.length) lines.push(`Alleen monumenten met ${active.map(([key, list]) => `${facets[key].toLowerCase()} ${list.map(value => `“${value}”`).join(' of ')}`).join(', en ')}.`);
-  lines.push(`Gesorteerd op ${sort === 'relevantie' ? 'relevantie (best passend eerst)' : sorts[sort].label.toLowerCase()}; resultaten ${page * PAGE_SIZE + 1} tot ${(page + 1) * PAGE_SIZE}.`);
+  lines.push(`Gesorteerd op ${sort === 'relevantie' ? 'relevantie (best passend eerst)' : sorts[sort].label.charAt(0).toLowerCase() + sorts[sort].label.slice(1)}; resultaten ${page * PAGE_SIZE + 1} tot ${(page + 1) * PAGE_SIZE}.`);
   return lines;
 }
 // CSV met puntkomma (opent direct goed in Nederlandse Excel) en BOM voor UTF-8.
