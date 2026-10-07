@@ -60,10 +60,35 @@
       <thead><tr><th>Syntax</th><th>Betekenis</th><th>Voorbeeld</th></tr></thead>
       <tbody>
         <tr><td><code>"…"</code></td><td>exacte woordcombinatie</td><td><button type="button" data-example='"gesmeed ijzer"'>"gesmeed ijzer"</button></td></tr>
-        <tr><td><code>"…"~5</code></td><td>woorden binnen 5 posities van elkaar</td><td><button type="button" data-example='"kasteel gracht"~5'>"kasteel gracht"~5</button></td></tr>
         <tr><td><code>*</code></td><td>willekeurig vervolg (woorddeel)</td><td><button type="button" data-example="molen*">molen*</button></td></tr>
         <tr><td><code>?</code></td><td>precies één willekeurig teken</td><td><button type="button" data-example="kast?el">kast?el</button></td></tr>
         <tr><td><code>~</code></td><td>vergelijkbare spelling (tikfouten)</td><td><button type="button" data-example="kasteeel~">kasteeel~</button></td></tr>
+        <tr><td><code>~1</code> / <code>~2</code></td><td>maximaal 1 of 2 tikfouten</td><td><button type="button" data-example="kastel~1">kastel~1</button></td></tr>
+      </tbody>
+    </table>
+    <h3>Nabijheid: naast elkaar of in de buurt</h3>
+    <p>Er is geen <code>NEAR</code>- of <code>ADJ</code>-operator, maar met quotes kan beide.</p>
+    <table>
+      <thead><tr><th>Syntax</th><th>Betekenis</th><th>Voorbeeld</th></tr></thead>
+      <tbody>
+        <tr><td><code>"a b"</code></td><td><strong>naast elkaar</strong>, in deze volgorde</td><td><button type="button" data-example='"gesmeed ijzer"'>"gesmeed ijzer"</button></td></tr>
+        <tr><td><code>"a b"~3</code></td><td><strong>in de buurt</strong>: binnen enkele posities</td><td><button type="button" data-example='"kasteel gracht"~3'>"kasteel gracht"~3</button></td></tr>
+        <tr><td><code>"a b"~10</code></td><td>ruimer: binnen ongeveer 10 posities</td><td><button type="button" data-example='"kasteel gracht"~10'>"kasteel gracht"~10</button></td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>Het getal is het aantal <em>stappen</em> dat een woord mag verschuiven. Elk woord ertussen kost 1 stap, de volgorde omdraaien kost 2. Een klein getal betekent dus vrijwel "in deze volgorde"; vanaf ongeveer 3 telt ook de omgekeerde volgorde mee.</li>
+      <li>De volgorde in de quotes doet ertoe: <button type="button" data-example='"kasteel gracht"~3'>"kasteel gracht"~3</button> en <button type="button" data-example='"gracht kasteel"~3'>"gracht kasteel"~3</button> geven verschillende resultaten.</li>
+      <li>Niet mogelijk: "a <em>vóór</em> b binnen N woorden" afdwingen, of nabijheid met alternatieven zoals <code>(kasteel OR burcht) NEAR gracht</code>. Combineer dan losse delen: <button type="button" data-example='"kasteel gracht"~5 OR "burcht gracht"~5'>"kasteel gracht"~5 OR "burcht gracht"~5</button>.</li>
+      <li>Jokertekens werken niet binnen quotes: <code>"ijzer* hek"</code> zoekt niet op ijzeren hek.</li>
+    </ul>
+    <h3>Gevorderd</h3>
+    <table>
+      <thead><tr><th>Syntax</th><th>Betekenis</th><th>Voorbeeld</th></tr></thead>
+      <tbody>
+        <tr><td><code>/…/</code></td><td>patroon (reguliere expressie) op één woord</td><td><button type="button" data-example="/mol[ae]n/">/mol[ae]n/</button></td></tr>
+        <tr><td><code>^3</code></td><td>zwaarder laten wegen; verandert alleen de volgorde, niet het aantal</td><td><button type="button" data-example="kasteel^3 OR gracht">kasteel^3 OR gracht</button></td></tr>
+        <tr><td><code>_exists_:"…"</code></td><td>veld wel of niet ingevuld</td><td><button type="button" data-example='molen AND NOT _exists_:"https://schema org/name"'>molen zonder naam</button></td></tr>
       </tbody>
     </table>
     <h3>Goed om te weten</h3>
@@ -75,7 +100,8 @@
       <li>Een jokerteken aan het begin (<code>*steel</code>) is uitgeschakeld.</li>
       <li>Haakjes en quotes moeten gesloten zijn, anders volgt een melding over de zoeksyntax.</li>
       <li>Een lege zoekvraag toont alle monumenten; verken dan met de filters.</li>
-      <li>Zoek je een naam of adres? Kies dan bij <strong>Zoek in</strong> Naam, Adres of Plaats, of Alles.</li>
+      <li>Zoek je een naam of adres? Kies dan bij <strong>Zoek in</strong> Naam, Adres of Plaats, of Alles. Een veld noemen in de zoekvraag (zoals <code>name:molen</code>) werkt in deze index niet.</li>
+      <li>Niet elk monument heeft een naam: maar 8.261 van de ruim 63.000 hebben er een. Zoeken in <strong>Naam</strong> vindt dus niet alles; kies bij twijfel <strong>Omschrijving</strong> of <strong>Alles</strong>.</li>
     </ul>
   </dialog>
   </div>
