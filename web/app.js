@@ -162,7 +162,7 @@ function syncUrl(mode) {
 }
 function explain() {
   const lines = describe(state);
-  $('explain').textContent = lines.slice(0, -1).join(' ');
+  $('explain').textContent = lines.slice(0, -1).join(' · ');
   $('explain').hidden = !$('explain').textContent;
   $('query-explain').replaceChildren(...lines.map(line => el('li', line)));
 }

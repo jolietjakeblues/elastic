@@ -66,10 +66,10 @@ RCE Elasticsearch API
 
 | Bestand | Rol |
 |---|---|
-| `web/search.js` | Veld-whitelist, queryopbouw, begrenzing, aanroep van de service en foutvertaling |
+| `web/search.js` | Veld-whitelist, queryopbouw, begrenzing, deelbare URL, uitleg in gewone taal, CSV, aanroep van de service en foutvertaling |
 | `web/geo.js` | Geometrie uit `geoPoint` en `geo:asWKT` omzetten naar kaartcoördinaten |
-| `web/app.js` | Interface: resultaten, facets, actieve filters, pagination, kaart |
-| `web/style.css` | Layout: filters, resultaten en kaart naast elkaar op brede schermen, Lijst/Kaart-schakelaar op smalle schermen |
+| `web/app.js` | Interface: resultaten, facets, actieve filters, sorteren, export, pagination, kaart |
+| `web/style.css` | RCE-huisstijl en layout: filters, resultaten en kaart naast elkaar op brede schermen, Lijst/Kaart-schakelaar op smalle schermen |
 
 Externe onderdelen die in de browser worden geladen: Leaflet 1.9.4 (via unpkg, met SRI-hash) en de PDOK BRT-achtergrondkaart.
 
@@ -123,16 +123,52 @@ Facets zijn `terms`-aggregations op de `.keyword`-velden, in dezelfde request al
 
 Getest tegen de echte index: `kasteel AND gracht` geeft 124 resultaten, waarvan 29 in Gelderland. Na klikken op Gelderland is het totaal exact 29.
 
-Klikken op een facetwaarde voegt een exact `term`-filter toe. Zoeken en filteren zijn gescheiden:
+Facetwaarden zijn aan te vinken, ook meerdere binnen één facet. Binnen een facet geldt **of**, tussen facetten **en**. Zoeken (`query`) en filteren (`post_filter` met `terms`-clauses) zijn gescheiden:
 
 ```json
-"query": { "bool": {
-  "must":   [ { "query_string": { "query": "kasteel AND gracht", "fields": ["https://schema org/description"] } } ],
-  "filter": [ { "term": { "https://schema org/addressRegion.keyword": "Gelderland" } } ]
+"query": { "query_string": { "query": "kasteel AND gracht", "fields": ["https://schema org/description"] } },
+"post_filter": { "bool": { "filter": [
+  { "terms": { "https://schema org/addressRegion.keyword": ["Gelderland", "Utrecht"] } }
+] } },
+"aggs": { "addressRegion": {
+  "filter": { "bool": { "filter": [ /* filters van de andere facetten */ ] } },
+  "aggs": { "values": { "terms": { "field": "https://schema org/addressRegion.keyword", "size": 100 } } }
 } }
 ```
 
-Facetaantallen gelden voor zoekvraag plus alle actieve filters. Per facet worden de 100 meest voorkomende waarden getoond. Actieve filters staan boven de resultaten en zijn los of allemaal tegelijk te verwijderen. Per facet is één waarde tegelijk actief.
+Elke facet telt met de filters van de *andere* facetten. Daardoor blijven na het aanvinken van Gelderland de andere provincies met hun aantallen zichtbaar, zodat je Utrecht erbij kunt kiezen (Gelderland 29 + Utrecht 14 = 43 resultaten). Per facet worden de 100 meest voorkomende waarden getoond; gekozen waarden blijven altijd zichtbaar. Actieve filters staan boven de resultaten en zijn los of allemaal tegelijk te verwijderen.
+
+## Sorteren
+
+| Keuze | Elasticsearch |
+|---|---|
+| Relevantie | standaard (`_score`) |
+| Naam (A–Z) | `https://schema org/name.keyword` oplopend, zonder naam achteraan |
+| Plaats (A–Z) | `https://schema org/addressLocality.keyword`, daarbinnen op naam |
+
+Sorteren op Rijksmonumentnummer zit er bewust niet in: `identifier` staat als tekst in de index (dan komt 5 na 10040) en scripts zijn op de service uitgeschakeld.
+
+## Deelbare URL
+
+De URL bevat altijd de huidige zoekactie, bijvoorbeeld:
+
+```text
+?q=kasteel+AND+gracht&veld=Omschrijving&provincie=Gelderland&provincie=Utrecht&sorteer=naam&pagina=2
+```
+
+Parameters: `q`, `veld` (Omschrijving, Naam, Adres, Plaats, Type, Alles), `provincie`, `plaats`, `categorie`, `type` (herhaalbaar), `sorteer` (`naam`, `plaats`) en `pagina`. Onbekende waarden worden genegeerd. De knop **Kopieer link** zet de URL op het klembord. Terug en vooruit in de browser werken.
+
+## Export naar CSV
+
+**Download CSV** exporteert de huidige zoekactie (zoekvraag, filters en sortering) met maximaal 1.000 rijen: nummer, naam, adres, postcode, plaats, provincie/regio, categorie, type, Linked Data-URI, Monumentenregister-link en omschrijving. Het bestand gebruikt puntkomma's en UTF-8 met BOM, zodat het direct goed opent in een Nederlandse Excel. Waarden die met `=`, `+`, `-` of `@` beginnen krijgen een `'` ervoor, zodat een spreadsheet ze niet als formule uitvoert.
+
+## Uitleg in gewone taal
+
+Onder het totaal staat wat er gezocht wordt, bijvoorbeeld *"Zoekt in de omschrijving naar: kasteel én gracht · Alleen monumenten met provincie/regio “Gelderland” of “Utrecht”."* Onder **Toon Elasticsearch-query** staat dezelfde uitleg met sortering en pagina, naast de JSON.
+
+## Huisstijl
+
+De opmaak volgt de RCE Web Stijlgids en de rijkshuisstijl, met het Monumentenregister als voorbeeld: RCE-donkergeel `#ffb612` in een balk van 75px boven (kruimelpad) en onder (demo-waarschuwing), een grijze zoekband, zwarte tekst van 18px met regelhoogte 29.25px in RO Sans (met fallback Calibri, Verdana), donkerblauw `#01689b` voor links en knoppen, en geen uppercase of afwijkende tekstkleuren. Het rijkslogo/beeldmerk is bewust niet opgenomen: dit is een demo en geen officiële RCE-dienst. RO Sans wordt niet meegeleverd; staat het font niet op de computer, dan valt de pagina terug op Calibri of Verdana.
 
 ## Kaart
 
@@ -154,7 +190,8 @@ Gedrag:
 
 ## Begrenzing en veiligheid
 
-- maximaal 25 resultaten per pagina, met `from`/`size`; doorbladeren tot maximaal 10.000 resultaten;
+- maximaal 25 resultaten per pagina, met `from`/`size`; doorbladeren tot maximaal 10.000 resultaten; export maximaal 1.000 rijen;
+- maximaal 20 gekozen waarden per facet;
 - `track_total_hits: true` voor exacte totalen;
 - zoekvelden en filtervelden komen uit een vaste whitelist; gebruikers kunnen geen veldnamen invoeren;
 - zoekvraag maximaal 500 tekens, `allow_leading_wildcard: false`, servertimeout 15 s, clienttimeout 20 s;
@@ -171,8 +208,8 @@ Gebruikers zien een korte melding bij: geen resultaten, ongeldige zoeksyntax (bi
 - De kaart toont alleen de resultaten van de huidige pagina (25), niet alle treffers.
 - Bij ver uitzoomen overlappen de nummerlabels.
 - Monumenten zonder geometrie staan niet op de kaart. De teller "Op kaart" laat zien hoeveel er wel op staan.
-- Per facet is één waarde tegelijk filterbaar; combinaties binnen één facet (OR) zitten er niet in.
-- Zoekopdrachten zijn niet deelbaar via de URL.
+- Sorteren op Rijksmonumentnummer kan niet (zie Sorteren).
+- De CSV-export bevat maximaal 1.000 rijen.
 - Leaflet en de achtergrondkaart komen van externe diensten (unpkg, PDOK).
 
 ## Cloudflare Worker
