@@ -15,7 +15,8 @@
       <div class="query-input"><label for="query">Jouw zoekvraag</label><input id="query" name="query" type="search" maxlength="500" placeholder="Bijvoorbeeld: kasteel AND gracht" aria-describedby="syntax"></div>
       <div><label for="field">Zoek in</label><select id="field" name="field"><option>Omschrijving</option><option>Naam</option><option>Adres</option><option>Plaats</option><option>Type</option><option>Alles</option></select></div>
       <button type="submit" class="primary">Zoek</button>
-      <p id="syntax" class="hint">Combineer met AND, OR, NOT en haakjes. Gebruik quotes voor een woordcombinatie. Een lege zoekvraag toont alles.</p>
+      <p id="syntax" class="hint">Combineer met AND, OR, NOT (in hoofdletters) en haakjes. Gebruik quotes voor een exacte woordcombinatie. <button type="button" id="help-open" class="link-button">Zoekhulp en meer voorbeelden</button></p>
+      <p id="query-tip" class="tip" hidden></p>
       <div class="examples"><span>Probeer:</span><button type="button" data-example="kasteel AND gracht">kasteel AND gracht</button><button type="button" data-example="ijzer OR staal">ijzer OR staal</button><button type="button" data-example='"Grote Scheer"'>"Grote Scheer"</button></div>
     </form>
     <div id="status" role="status" aria-live="polite">Vul een zoekvraag in of kies een voorbeeld.</div>
@@ -27,6 +28,43 @@
       <section id="map-panel" aria-labelledby="map-heading"><div class="results-title"><h2 id="map-heading">Kaart</h2></div><div id="map" role="region" aria-label="Kaart met zoekresultaten"></div><p id="map-info" class="hint">Na het zoeken verschijnen de resultaten van deze pagina met een locatie op de kaart.</p></section>
     </div>
     <details class="technical"><summary>Toon Elasticsearch-query</summary><p>De JSON van de laatst verstuurde zoekactie.</p><pre id="query-json">Er is nog geen zoekactie uitgevoerd.</pre></details>
+  <dialog id="help" aria-labelledby="help-title">
+    <div class="help-head"><h2 id="help-title">Zoekhulp</h2><button type="button" id="help-close" aria-label="Sluit zoekhulp">×</button></div>
+    <p>De zoekbalk gebruikt de Elasticsearch <code>query_string</code>-syntax. Klik op een voorbeeld om het meteen te proberen. Er wordt gezocht in het veld dat bij <strong>Zoek in</strong> staat.</p>
+    <h3>Combineren</h3>
+    <table>
+      <thead><tr><th>Syntax</th><th>Betekenis</th><th>Voorbeeld</th></tr></thead>
+      <tbody>
+        <tr><td><code>AND</code></td><td>beide woorden moeten voorkomen</td><td><button type="button" data-example="ijzer AND brug">ijzer AND brug</button></td></tr>
+        <tr><td><code>OR</code></td><td>minimaal één van de woorden</td><td><button type="button" data-example="ijzer OR staal">ijzer OR staal</button></td></tr>
+        <tr><td><code>NOT</code></td><td>sluit een woord uit</td><td><button type="button" data-example="kasteel AND NOT ruïne">kasteel AND NOT ruïne</button></td></tr>
+        <tr><td><code>( … )</code></td><td>voorwaarden groeperen</td><td><button type="button" data-example="(kasteel OR buitenplaats) AND gracht">(kasteel OR buitenplaats) AND gracht</button></td></tr>
+        <tr><td><code>+</code> / <code>-</code></td><td>kort voor “moet” / “mag niet”</td><td><button type="button" data-example="+kasteel -ruïne">+kasteel -ruïne</button></td></tr>
+      </tbody>
+    </table>
+    <h3>Woordcombinaties en varianten</h3>
+    <table>
+      <thead><tr><th>Syntax</th><th>Betekenis</th><th>Voorbeeld</th></tr></thead>
+      <tbody>
+        <tr><td><code>"…"</code></td><td>exacte woordcombinatie</td><td><button type="button" data-example='"gesmeed ijzer"'>"gesmeed ijzer"</button></td></tr>
+        <tr><td><code>"…"~5</code></td><td>woorden binnen 5 posities van elkaar</td><td><button type="button" data-example='"kasteel gracht"~5'>"kasteel gracht"~5</button></td></tr>
+        <tr><td><code>*</code></td><td>willekeurig vervolg (woorddeel)</td><td><button type="button" data-example="molen*">molen*</button></td></tr>
+        <tr><td><code>?</code></td><td>precies één willekeurig teken</td><td><button type="button" data-example="kast?el">kast?el</button></td></tr>
+        <tr><td><code>~</code></td><td>vergelijkbare spelling (tikfouten)</td><td><button type="button" data-example="kasteeel~">kasteeel~</button></td></tr>
+      </tbody>
+    </table>
+    <h3>Goed om te weten</h3>
+    <ul>
+      <li><strong>Operatoren in hoofdletters.</strong> <code>and</code>, <code>en</code> of <code>of</code> zijn gewone zoekwoorden, geen operatoren.</li>
+      <li><strong>Zonder operator betekent een spatie OR.</strong> <code>kasteel gracht</code> vindt alles met kasteel <em>of</em> gracht (1.722 treffers); <code>kasteel AND gracht</code> alleen beide (124).</li>
+      <li><strong>Hoofdletters in zoekwoorden maken niet uit</strong>, maar <strong>accenten wel</strong>: <code>ruïne</code> en <code>ruine</code> geven verschillende resultaten. Zoek op beide met <button type="button" data-example="ruïne OR ruine">ruïne OR ruine</button>.</li>
+      <li><strong>Getallen en tekens tussen quotes.</strong> <code>1900-1920</code> zonder quotes zoekt los op 1900 of 1920; <button type="button" data-example='"1900-1920"'>"1900-1920"</button> zoekt de reeks.</li>
+      <li>Een jokerteken aan het begin (<code>*steel</code>) is uitgeschakeld.</li>
+      <li>Haakjes en quotes moeten gesloten zijn, anders volgt een melding over de zoeksyntax.</li>
+      <li>Een lege zoekvraag toont alle monumenten; verken dan met de filters.</li>
+      <li>Zoek je een naam of adres? Kies dan bij <strong>Zoek in</strong> Naam, Adres of Plaats, of Alles.</li>
+    </ul>
+  </dialog>
   </main>
   <footer class="wrap"><strong>Dit is een demo.</strong> Bouw hier geen applicaties of andere afhankelijkheden op. De scripts, index en service kunnen zonder aankondiging wijzigen of verdwijnen.<p>Deze demo gebruikt de RCE-dataset Rijksmonumenten-sdo en is geen vervanging van het Monumentenregister.</p></footer>
 </body>

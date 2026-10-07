@@ -11,6 +11,10 @@ const markerLayer = map ? L.featureGroup().addTo(map) : null;
 if (map) L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', { minZoom: 6, maxZoom: 19, attribution: 'Kaart: <a href="https://www.pdok.nl/" target="_blank" rel="noopener">PDOK</a> / Kadaster' }).addTo(map);
 else $('map').append(el('p', 'De kaartbibliotheek kon niet worden geladen.', 'empty'));
 const format = number => new Intl.NumberFormat('nl-NL').format(number);
+// Sommige bronwaarden zijn dubbel gecodeerd (bijv. "K. &amp; J. Wilkensbrug"). Entiteiten worden als
+// tekst gedecodeerd; er komt nooit HTML uit de bron in de pagina.
+const decode = text => (/&[#\w]+;/.test(text) ? new DOMParser().parseFromString(text, 'text/html').body.textContent : text);
+const show = value => decode(textValue(value));
 function el(tag, text, className) { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, callback) { const node = el('button', text); node.type = 'button'; node.addEventListener('click', callback); return node; }
 function link(text, url) { const node = el('a', text); node.href = url; node.target = '_blank'; node.rel = 'noopener noreferrer'; return node; }
@@ -21,7 +25,7 @@ function highlight(fragment) {
   for (const [index, part] of fragment.split(/(<mark>.*?<\/mark>)/gs).entries()) {
     const marked = index % 2 === 1;
     const parsed = new DOMParser().parseFromString(marked ? part.slice(6, -7) : part, 'text/html');
-    const text = parsed.body.textContent;
+    const text = decode(parsed.body.textContent);
     node.append(marked ? el('mark', text) : document.createTextNode(text));
   }
   return node;
@@ -33,16 +37,16 @@ function renderResults(hits) {
     const source = hit._source || {};
     const card = el('article'); card.dataset.id = hit._id; cards.set(hit._id, card);
     card.addEventListener('click', event => { if (!event.target.closest('a, button, summary, details')) select(hit._id, true); });
-    card.append(el('p', `Rijksmonument ${textValue(source[fields.identifier]) || 'zonder nummer'}`, 'number'), el('h3', textValue(source[fields.name]) || 'Naam niet beschikbaar'));
+    card.append(el('p', `Rijksmonument ${textValue(source[fields.identifier]) || 'zonder nummer'}`, 'number'), el('h3', show(source[fields.name]) || 'Naam niet beschikbaar'));
     const metadata = el('dl', null, 'metadata');
     for (const [key, label] of Object.entries({ address: 'Adres', postalCode: 'Postcode', addressLocality: 'Plaats', addressRegion: 'Provincie/regio', category: 'Categorie', additionalType: 'Type' })) {
-      const row = el('div'); row.append(el('dt', `${label}:`), el('dd', textValue(source[fields[key]]) || 'Niet vermeld')); metadata.append(row);
+      const row = el('div'); row.append(el('dt', `${label}:`), el('dd', show(source[fields[key]]) || 'Niet vermeld')); metadata.append(row);
     }
     card.append(metadata);
     const fragments = Object.values(hit.highlight || {}).flat().slice(0, 3);
     if (fragments.length) fragments.forEach(fragment => card.append(highlight(fragment)));
     else card.append(el('p', 'Geen gematcht tekstfragment beschikbaar.', 'muted'));
-    const descriptions = values(source[fields.description]);
+    const descriptions = values(source[fields.description]).map(decode);
     if (descriptions.length) { const detail = el('details'); detail.append(el('summary', 'Volledige omschrijving')); descriptions.forEach(text => detail.append(el('p', text, 'description'))); card.append(detail); }
     const links = el('div', null, 'links');
     for (const raw of values(source['@id'])) { const url = safeUrl(raw); if (url) { links.append(link('Linked Data', url)); const uri = el('p', null, 'uri'); uri.append(link(raw, url)); card.append(uri); } }
@@ -110,7 +114,7 @@ function select(id, fromList) {
 function renderFilters(aggregations) {
   $('active-filters').replaceChildren();
   for (const [key, value] of Object.entries(state.filters)) {
-    const chip = button(`${facets[key]}: ${value} ×`, () => { delete state.filters[key]; state.page = 0; run(); });
+    const chip = button(`${facets[key]}: ${decode(value)} ×`, () => { delete state.filters[key]; state.page = 0; run(); });
     chip.setAttribute('aria-label', `Verwijder filter ${facets[key]}: ${value}`); $('active-filters').append(chip);
   }
   if (Object.keys(state.filters).length) $('active-filters').append(button('Wis alle filters', () => { state.filters = {}; state.page = 0; run(); }));
@@ -124,7 +128,7 @@ function renderFilters(aggregations) {
       const item = el('li');
       const option = button('', () => { if (state.filters[key] === bucket.key) delete state.filters[key]; else state.filters[key] = bucket.key; state.page = 0; run(); });
       const approximate = bucket.doc_count_error_upper_bound > 0;
-      option.append(el('span', bucket.key), el('span', `${approximate ? '≈ ' : ''}${format(bucket.doc_count)}`));
+      option.append(el('span', decode(bucket.key)), el('span', `${approximate ? '≈ ' : ''}${format(bucket.doc_count)}`));
       option.setAttribute('aria-pressed', String(state.filters[key] === bucket.key)); item.append(option); list.append(item);
     }
     group.append(list);
@@ -166,7 +170,19 @@ async function run() {
   } finally { clearTimeout(timer); if (controller === current) $('workspace').setAttribute('aria-busy', 'false'); }
 }
 $('search-form').addEventListener('submit', event => { event.preventDefault(); state.query = $('query').value; state.field = $('field').value; state.page = 0; run(); });
-document.querySelectorAll('[data-example]').forEach(node => node.addEventListener('click', () => { $('query').value = node.dataset.example; $('search-form').requestSubmit(); }));
+document.querySelectorAll('[data-example]').forEach(node => node.addEventListener('click', () => { $('help').close(); $('query').value = node.dataset.example; checkQuery(); $('search-form').requestSubmit(); }));
+$('help-open').addEventListener('click', () => $('help').showModal());
+$('help-close').addEventListener('click', () => $('help').close());
+$('help').addEventListener('click', event => { if (event.target === $('help')) $('help').close(); });
+// Tip bij operatoren in kleine letters of Nederlandse varianten: die worden als gewone zoekwoorden gezien.
+function checkQuery() {
+  const words = [...new Set(($('query').value.replace(/"[^"]*"/g, ' ').match(/(?<![\p{L}\d])(and|or|not|en|of|niet)(?![\p{L}\d])/gu) || []))];
+  const operator = { and: 'AND', en: 'AND', or: 'OR', of: 'OR', not: 'NOT', niet: 'NOT' };
+  $('query-tip').textContent = words.length ? `Tip: ${words.map(word => `“${word}”`).join(', ')} wordt als zoekwoord gezien. Bedoel je ${[...new Set(words.map(word => operator[word]))].join(' / ')}? Schrijf operatoren in hoofdletters.` : '';
+  $('query-tip').hidden = !words.length;
+}
+$('query').addEventListener('input', checkQuery);
+
 $('previous').addEventListener('click', () => { state.page--; run(); });
 $('next').addEventListener('click', () => { state.page++; run(); });
 document.querySelectorAll('.view-toggle button').forEach(node => node.addEventListener('click', () => setView(node.dataset.view)));
