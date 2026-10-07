@@ -92,6 +92,12 @@ De demo gebruikt een Elasticsearch `query_string` query, zodat Booleaanse operat
 | `"..."~5` | woorden binnen 5 posities | `"kasteel gracht"~5` |
 | `*` / `?` | jokertekens (niet aan het begin) | `molen*`, `kast?el` |
 | `~` | vergelijkbare spelling | `kasteeel~` |
+| `~1` / `~2` | maximaal 1 of 2 tikfouten | `kastel~1` |
+| `/…/` | patroon (reguliere expressie) | `/mol[ae]n/` |
+| `^3` | zwaarder laten wegen (alleen volgorde) | `kasteel^3 OR gracht` |
+| `_exists_:"…"` | veld wel/niet gevuld | `molen AND NOT _exists_:"https://schema org/name"` |
+
+Nabijheid: er is geen `NEAR`/`ADJ`. `"a b"` betekent naast elkaar in deze volgorde, `"a b"~N` binnen N stappen (een woord ertussen kost 1, de volgorde omdraaien kost 2). "a vóór b binnen N woorden" en nabijheid met alternatieven (`(a OR b) NEAR c`) kunnen niet met `query_string`. Daarvoor zijn `intervals`- of `span_near`-queries nodig. Jokertekens werken niet binnen quotes.
 
 Let op: operatoren alleen in hoofdletters (`and`, `en` en `of` zijn gewone zoekwoorden); zonder operator betekent een spatie `OR`; accenten tellen mee (`ruïne` ≠ `ruine`). De knop **Zoekhulp** in de demo legt dit uit met klikbare voorbeelden, en onder de zoekbalk verschijnt een tip als iemand `en`/`of`/`and` in kleine letters typt.
 
