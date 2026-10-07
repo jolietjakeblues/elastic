@@ -28,12 +28,12 @@ test('Veldkeuze, filters, sortering, querylengte en resultaatvenster zijn begren
   assert.deepEqual(exported.query.bool.filter, [{ terms: { [region]: ['Utrecht'] } }]);
 });
 test('Deelbare URL: heen en terug, onbekende waarden worden genegeerd', () => {
-  const state = { query: 'kasteel AND gracht', field: 'Naam', filters: { addressRegion: ['Gelderland', 'Utrecht'], category: ['onroerend gebouwd'] }, page: 2, sort: 'naam' };
+  const state = { query: 'kasteel AND gracht', field: 'Naam', filters: { addressRegion: ['Gelderland', 'Utrecht'], category: ['onroerend gebouwd'] }, page: 2, sort: 'naam', jokers: false };
   const search = toParams(state).toString();
   assert.equal(search, 'q=kasteel+AND+gracht&veld=Naam&provincie=Gelderland&provincie=Utrecht&categorie=onroerend+gebouwd&sorteer=naam&pagina=3');
   assert.deepEqual(fromParams(`?${search}`), { state, active: true });
   const bad = fromParams('?veld=__proto__&sorteer=x&pagina=-4&onbekend=1');
-  assert.deepEqual(bad.state, { query: '', field: 'Omschrijving', filters: {}, sort: 'relevantie', page: 0 });
+  assert.deepEqual(bad.state, { query: '', field: 'Omschrijving', filters: {}, sort: 'relevantie', page: 0, jokers: false });
   assert.equal(bad.active, false);
   assert.equal(toParams({}).toString(), '');
 });
@@ -70,4 +70,15 @@ test('Kaart: geoPoint, dan WKT POINT (lon lat), dan WKT-vlak met label op het zw
   assert.equal(multi.polygons.length, 2); assert.equal(multi.polygons[1].length, 2);
   assert.ok(Math.abs(multi.point.lon - 6.5) < 1e-9, 'label op het grootste vlak');
   assert.ok(buildQuery()._source.includes(WKT_FIELD));
+});
+test('Verborgen testschakelaar ?jokers=1 voor een jokerteken aan het begin', () => {
+  assert.equal(buildQuery({ query: '*molen' }).query.query_string.allow_leading_wildcard, false);
+  assert.equal(buildQuery({ query: '*molen', jokers: 'ja' }).query.query_string.allow_leading_wildcard, false);
+  const { state, active } = fromParams('?q=*molen&jokers=1');
+  assert.equal(active, true); assert.equal(state.jokers, true);
+  assert.equal(buildQuery(state).query.query_string.allow_leading_wildcard, true);
+  assert.equal(toParams(state).toString(), 'q=*molen&jokers=1');
+  assert.equal(fromParams('?jokers=true').state.jokers, false);
+  assert.equal(fromParams('?jokers=1').active, false);
+  assert.match(describe(state).join(' '), /Testmodus/);
 });
