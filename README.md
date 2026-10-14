@@ -10,6 +10,13 @@ De demo is **geen vervanging van het Monumentenregister** en geen productieappli
 
 Voorbeeld van een deelbare zoekactie: [kasteel AND gracht in Gelderland of Utrecht, op naam gesorteerd](https://rijksmonumenten-sdo-elastic-demo.jolietjakeblues64.workers.dev/?q=kasteel+AND+gracht&provincie=Gelderland&provincie=Utrecht&sorteer=naam)
 
+**Vervolg.** Deze demo is de eerste van drie. Dezelfde opzet (zoeksyntax, facetten, deelbare URL, CSV, kaart, huisstijl) is uitgebreid in:
+
+| Demo | Dataset | Wat erbij komt | Repo |
+|---|---|---|---|
+| [Erfgoed SDO/Elastic demo](https://erfgoed-sdo-elastic-demo.jolietjakeblues64.workers.dev/) | `erfgoed-sdo` | complexen, archeologische terreinen, beschermde gezichten en werelderfgoed in één index; ruimtelijk zoeken (binnen een gebied, in de buurt), Nederlandse taalverwerking, weging | [elastic-erfgoed---geo](https://github.com/jolietjakeblues/elastic-erfgoed---geo) |
+| [Archeologie SDO/Elastic demo](https://elastic-archeologie.jolietjakeblues64.workers.dev/) | `archeologie-sdo` | onderzoeksgebieden, vondstlocaties, terreinen, complexen, grondsporen en vondsten (1,1 miljoen objecten); datering in jaartallen en hiërarchie uit het ABR | [elastic-archeologie](https://github.com/jolietjakeblues/elastic-archeologie) |
+
 ```text
 Linked Data + SDO-publicatie + Elasticsearch = zoeken, filteren, facetteren en geografisch verkennen
 ```
