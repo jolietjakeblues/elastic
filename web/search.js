@@ -32,7 +32,7 @@ function validate({ query = '', field = 'Omschrijving', filters = {}, page = 0, 
     if (!Object.hasOwn(facets, key) || list.length > MAX_VALUES || !list.every(item => typeof item === 'string' && item.length <= 300)) throw new Error('Ongeldig filter.');
     if (list.length) clean[key] = [...new Set(list)];
   }
-  const search = query.trim() ? { query_string: { query: query.trim(), fields: searchFields[field], allow_leading_wildcard: jokers === true } } : { match_all: {} };
+  const search = query.trim() ? { query_string: { query: veiligeZoekvraag(query.trim()), fields: searchFields[field], allow_leading_wildcard: jokers === true } } : { match_all: {} };
   return { search, filters: clean, field, page, sort };
 }
 // Zoeken (query) en filteren (post_filter) blijven gescheiden. Elke facet telt met de filters van de andere
@@ -123,11 +123,15 @@ export function toCsv(hits, decode = text => text) {
   const rows = hits.map(hit => columns.map(([, key]) => cell(decode(values(hit._source?.[key === '@id' ? '@id' : fields[key]]).join(' | ')))).join(';'));
   return `﻿${columns.map(([label]) => label).join(';')}\r\n${rows.join('\r\n')}\r\n`;
 }
+// Een schuine streep start in query_string een reguliere expressie (/.*a.*/), die de service zwaar kan belasten.
+// Daarom wordt elke niet-geëscapete / een gewoon teken; "kerk/toren" werkt dan ook.
+export const veiligeZoekvraag = query => query.replace(/(?<!\\)\//g, '\\/');
 export async function search(body, signal) {
   const response = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal, credentials: 'omit' });
   if (!response.ok) {
     const detail = await response.text();
     console.error('Elasticsearch', response.status, detail);
+    if (response.status === 503 || /not ready/i.test(detail)) throw new Error('De zoekservice wordt op dit moment bijgewerkt. Probeer het over een paar minuten opnieuw.');
     if (response.status === 400 && /parsing_exception|parse_exception|query_shard_exception/.test(detail)) throw new Error('Controleer je zoeksyntax: gebruik bijvoorbeeld kasteel AND gracht en sluit quotes en haakjes.');
     if (response.status === 400 && /aggregat|fielddata/.test(detail)) throw new Error('De facetquery werkt niet. Probeer het later opnieuw.');
     throw new Error('De zoekservice kan je vraag nu niet verwerken. Probeer het opnieuw.');

@@ -214,11 +214,14 @@ Gedrag:
 - zoekvraag maximaal 500 tekens, `allow_leading_wildcard: false`, servertimeout 15 s, clienttimeout 20 s;
 - `_source` vraagt alleen de velden op die de interface gebruikt;
 - links worden alleen getoond als ze `http(s)` zijn. De Monumentenregister-link alleen als het domein `monumentenregister.cultureelerfgoed.nl` is;
-- brontekst en highlights worden als tekst in de pagina gezet, niet als HTML.
+- brontekst en highlights worden als tekst in de pagina gezet, niet als HTML;
+- een schuine streep in de zoekvraag wordt een gewoon teken, zodat niemand een zware reguliere expressie (`/.*a.*/`) naar de service kan sturen; `kerk/toren` werkt daardoor ook (gaf eerder een syntaxfout);
+- `web/_headers` zet een Content-Security-Policy (alleen eigen bestanden, Leaflet van unpkg met SRI, PDOK-tegels en de RCE-service), `nosniff`, een Referrer-Policy, een Permissions-Policy en `X-Robots-Tag: noindex`; `noindex` staat ook als meta-tag in de pagina, want dit is een demo. `npm start` stuurt dezelfde headers mee;
+- een onbekende URL geeft `web/404.html` (`not_found_handling` in `wrangler.jsonc`). Favicon: `web/favicon.svg` en `web/favicon-32.png` (tabblad), `web/favicon.ico` (oudere browsers), `web/favicon-180.png` (iPhone) en `web/favicon-512.png` (afbeelding bij een gedeelde link, Open Graph); dezelfde als in de Erfgoed-demo.
 
 ## Foutmeldingen
 
-Gebruikers zien een korte melding bij: geen resultaten, ongeldige zoeksyntax (bijvoorbeeld een niet-gesloten haakje), service niet bereikbaar, timeout, onvolledig antwoord en een fout in de facetquery. Technische details staan in de browserconsole.
+Gebruikers zien een korte melding bij: geen resultaten, ongeldige zoeksyntax (bijvoorbeeld een niet-gesloten haakje), service niet bereikbaar, service wordt bijgewerkt (503), timeout, onvolledig antwoord en een fout in de facetquery. Technische details staan in de browserconsole.
 
 ## Bekende beperkingen
 
