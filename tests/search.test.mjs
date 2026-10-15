@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildQuery, buildExportQuery, fields, safeUrl, toParams, fromParams, describe, toCsv, EXPORT_MAX } from '../web/search.js';
+import { buildQuery, buildExportQuery, fields, safeUrl, toParams, fromParams, describe, toCsv, EXPORT_MAX, veiligeZoekvraag } from '../web/search.js';
 const region = `${fields.addressRegion}.keyword`, type = `${fields.additionalType}.keyword`;
 test('Zoeken (query) en filteren (post_filter) blijven gescheiden; facets tellen zonder hun eigen filter', () => {
   const body = buildQuery({ query: '(kasteel OR buitenplaats) AND gracht', filters: { addressRegion: ['Gelderland', 'Utrecht'], additionalType: 'Kasteel' }, page: 1 });
@@ -81,4 +81,9 @@ test('Verborgen testschakelaar ?jokers=1 voor een jokerteken aan het begin', () 
   assert.equal(fromParams('?jokers=true').state.jokers, false);
   assert.equal(fromParams('?jokers=1').active, false);
   assert.match(describe(state).join(' '), /Testmodus/);
+});
+test('Een schuine streep start geen reguliere expressie', () => {
+  assert.equal(veiligeZoekvraag('/.*a.*/'), String.raw`\/.*a.*\/`);
+  assert.equal(veiligeZoekvraag(String.raw`kerk\/toren`), String.raw`kerk\/toren`, 'al geëscapet blijft gelijk');
+  assert.equal(buildQuery({ query: 'kerk/toren' }).query.query_string.query, String.raw`kerk\/toren`);
 });

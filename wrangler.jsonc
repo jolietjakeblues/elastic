@@ -4,6 +4,8 @@
   "name": "rijksmonumenten-sdo-elastic-demo",
   "compatibility_date": "2026-10-07",
   "assets": {
-    "directory": "./web"
+    "directory": "./web",
+    // Een onbekende URL geeft web/404.html (met status 404). Headers staan in web/_headers.
+    "not_found_handling": "404-page"
   }
 }
